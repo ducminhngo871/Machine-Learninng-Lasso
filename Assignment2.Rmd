@@ -59,6 +59,8 @@ If we create a model, we can find which variables have the highest impact on the
 
 2. Create some exploratory plots or table summaries of the variables in the dataset. Be sure to also examine missing values or other interesting values. You may want to adjust the `fig.width` and `fig.height` in the code chunk options.  
 
+### Need to comment on this one: 
+
 ```{r libraries}
 library(tidyverse)         # for reading in data, graphing, and cleaning
 library(tidymodels)        # for modeling ... tidily
@@ -172,6 +174,7 @@ hotels_recipeTest %>%
   # bake(new_data = NULL)
   juice() 
 ```
+### . means for all variables 
 
 ```{r}
 hotel_recipe_TEST2 <- recipe(is_canceled ~ .,
@@ -222,11 +225,21 @@ hotel_recipe %>%
 5. In this step we will set up a LASSO model and workflow.
 
 * In general, why would we want to use LASSO instead of regular logistic regression? (HINT: think about what happens to the coefficients).  
+## Google
+- Logistic regression does not shrink the variables. 
+
+- With LASSO, we only use the most important variables. 
 
 * Define the model type, set the engine, set the `penalty` argument to `tune()` as a placeholder, and set the mode.  
 * Create a workflow with the recipe and model.  
 
-### Why we need to set penalty = tune()?
+### What is the penalty: 
+- Typically, we are looking at the square residual. 
+- LASSO: square residual + penalty term ()
+
+- Computer has to define it. 
+
+### In here, should we use linear regression or logistic regression? 
 
 ```{r}
 hotel_lasso_mod <- 
@@ -267,22 +280,133 @@ set.seed(494) # for reproducibility
 #Split the data into 5-fold: 
 hotel_cv <- vfold_cv(hotels_training, v = 5)
 
+
+# potential penalty parameters
+penalty_grid <- grid_regular(penalty(),
+                             levels = 10)
+
+hotel_lasso_tune <- 
+  hotel_lasso_wf %>% 
+  tune_grid(
+    resamples = hotel_cv,
+    grid = penalty_grid
+  )
 ```
 
+```{r}
+collect_metrics(hotel_lasso_tune, summarize = TRUE)
+```
+```{r}
+### How can you select only "accuracy" not roc_curve. 
+collect_metrics(hotel_lasso_tune) %>%  
+  filter(.metric == "accuracy") %>% 
+  ggplot(aes(x = log(penalty), y = mean)) + geom_point()
+```
+
+
+```{r}
+hotel_lasso_tune %>% 
+  show_best(metric = "accuracy")
+```
+
+```{r best-tune}
+# Best tuning parameter by accuracy
+best_param <- hotel_lasso_tune %>% 
+  select_best(metric = "accuracy")
+best_param
+```
+
+```{r tune_wf}
+hotel_lasso_final_wf <- hotel_lasso_wf %>% 
+  finalize_workflow(best_param)
+hotel_lasso_final_wf
+```
+
+Now we could fit this to the training data and look at the resulting model. 
+
+```{r lasso_train}
+hotel_lasso_final_mod <- hotel_lasso_final_wf %>% 
+  fit(data = hotels_training)
+
+hotel_lasso_final_mod %>% 
+  pull_workflow_fit() %>% 
+  tidy() 
+```
+
+In here, I can see a few terms have coefficients of 0 (such as arrival_date_month_September, market_segment_Undefined, distribution_channel_Undefined)
 
 7. Now that we have a model, let's evaluate it a bit more. All we have looked at so far is the cross-validated accuracy from the previous step. 
 
 * Create a variable importance graph. Which variables show up as the most important? Are you surprised?  
-* Use the `last_fit()` function to fit the final model and then apply it to the testing data. Report the metrics from the testing data using the `collet_metrics()` function. How do they compare to the cross-validated metrics?
+
+```{r vip}
+# Visualize variable importance
+hotel_lasso_final_mod %>% 
+  pull_workflow_fit() %>% 
+  vip()
+```
+
+In here, the reserved_room_type_P comes up as the most important features. 
+
+* Use the `last_fit()` function to fit the final model and then apply it to the testing data. Report the metrics from the testing data using the `collect_metrics()` function. How do they compare to the cross-validated metrics?
+
+```{r lasso_test}
+# Fit model with best tuning parameter(s) to training data and apply to test data
+hotel_lasso_test <- hotel_lasso_final_wf %>% 
+  last_fit(hotels_split)
+
+# Metrics for model applied to test data
+hotel_lasso_test %>% 
+  collect_metrics()
+
+# This one is not totally right. 
+collect_metrics(hotel_lasso_tune) %>%
+  filter(.metric == 'accuracy')
+```
+
 * Use the `collect_predictions()` function to find the predicted probabilities and classes for the test data. Save this to a new dataset called `preds`. Then, use the `conf_mat()` function from `dials` (part of `tidymodels`) to create a confusion matrix showing the predicted classes vs. the true classes. Compute the true positive rate (sensitivity), true negative rate (specificity), and accuracy. See this [Wikipedia](https://en.wikipedia.org/wiki/Confusion_matrix) reference if you (like me) tend to forget these definitions. Also keep in mind that a "positive" in this case is a cancellation (those are the 1's).    
-* Use the `preds` dataset you just created to create a density plot of the predicted probabilities of canceling (the variable is called `.pred_1`), filling by `is_canceled`. Use an `alpha = .5` and `color = NA` in the `geom_density()`. Answer these questions: 
+
+```{r}
+preds <- collect_predictions(hotel_lasso_test)
+preds
+```
+```{r}
+preds %>%
+  conf_mat(truth = is_canceled, estimate = .pred_class)
+```
+
+## Make sure to calculate the true positive rate!
+
+* Use the `preds` dataset you just created to create a density plot of the predicted probabilities of canceling (the variable is called `.pred_1`), filling by `is_canceled`. Use an `alpha = .5` and `color = NA` in the `geom_density()`. 
+
+```{r}
+preds %>%
+  ggplot(aes(x = .pred_1, fill = is_canceled)) + geom_density(alpha = 0.5, color = NA)
+```
+
+Answer these questions: 
 a. What would this graph look like for a model with an accuracy that was close to 1?  
+
+I believe that a model with an accuracy that was close to 1 will have a density plot mostly on the value of 1 or 0 only.
+
 b. Our predictions are classified as canceled if their predicted probability of canceling is greater than .5. If we wanted to have a high true positive rate, should we make the cutoff for predicted as canceled higher or lower than .5?  
+
+## Is true positive in here means: the room we predict to get canceled DID get canceled?
+### And true negative: the room we predict not get canceled DID NOT get canceled. 
+
+As the true positive rate can be calculated as True Positive / (True Positive + False Negative). 
+Therefore, to make the true positive rate higher, we should make the cutoff higher, which then makes the prediction more accurate. 
+
 c. What happens to the true negative rate if we try to get a higher true positive rate? 
+If we try to get a higher true positive rate, we need to increase the cut off rate. As we have less postive cases, we will have more negative cases. With that, we will be more likely to get a false negative cases and the true negative rate will decrease. 
 
 8. Let's say that this model is going to be applied to bookings 14 days in advance of their arrival at each hotel, and someone who works for the hotel will make a phone call to the person who made the booking. During this phone call, they will try to assure that the person will be keeping their reservation or that they will be canceling in which case they can do that now and still have time to fill the room. How should the hotel go about deciding who to call? How could they measure whether it was worth the effort to do the calling? Can you think of another way they might use the model? 
 
+For the model, according to the importance variables graph, ....
+
 9. How might you go about questioning and evaluating the model in terms of fairness? Are there any questions you would like to ask of the people who collected the data? 
+
+I don't know which questions to ask. 
 
 
 
@@ -291,7 +415,11 @@ c. What happens to the true negative rate if we try to get a higher true positiv
 Read [Chapter 1: The Power Chapter](https://data-feminism.mitpress.mit.edu/pub/vi8obxh7/release/4) of Data Feminism by Catherine D'Ignazio and Lauren Klein. Write a 4-6 sentence paragraph reflecting on this chapter. As you reflect, you might consider responding to these specific questions. We will also have a discussion about these questions in class on Thursday.
 
 * At the end of the "Matrix of Domination" section, they encourage us to "ask uncomfortable questions: who is doing the work of data science (and who is not)? Whose goals are prioritized in data science (and whose are not)? And who benefits from data science (and who is either overlooked or actively harmed)?" In general, how would you answer these questions? And why are they important?  
+
+
 * Can you think of any examples of missing datasets, like those described in the "Data Science for Whom?" section? Or was there an example there that surprised you?  
+
+
 * How did the examples in the "Data Science with Whose Interests and Goals?" section make you feel? What responsibility do companies have to prevent these things from occurring? Who is to blame?
 
 

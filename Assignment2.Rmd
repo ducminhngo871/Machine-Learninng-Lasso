@@ -10,7 +10,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-#knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 ```
 
 ```{r libraries}
@@ -34,6 +34,7 @@ From now on, GitHub should be part of your routine when doing assignments. I rec
 
 **Task**: When you are finished with the assignment, post a link below to the GitHub repo for the assignment. 
 
+Here is my GitHub repo link: https://github.com/ducminhngo871/Machine-Learninng-Lasso. 
 
 ## Machine Learning review and intro to `tidymodels`
 
@@ -49,7 +50,6 @@ Additionally, for deposit_type, if the room has been charged (Non Refund), it wi
 
   _ What are some problems that might exist with the data? You might think about how it was collected and who did the collecting.  
   
-## Not so sure about this one.
 Some problems might exist with the data are: 
 - As the data was obtained directly from the hotels’ PMS databases’ servers, the hotel's workers were the one who complete the data. Therefore, it might be biased based on the view of the hotel's workers. 
 
@@ -81,9 +81,11 @@ hotels %>%
   slice(1:5)
 ```
 
+In here, I can see the dataset has 32 variables and the one we will focus on in this assignment is is_canceled: Value indicating if the booking was canceled (1) or not (0).
+
 ### 1. Quick exploration
 
-Take a quick look at distributions of all the variables to check for anything irregular. 
+After seeing the dataset for a brief moment, I will take a quick look at distributions of all the variables to check for anything irregular. 
 
 Quantitative variables:
 
@@ -99,9 +101,15 @@ hotels %>%
              scales = "free")
 ```
 
-Categorical variables:
+When I see the histogram plots of the variables, I can see that the data was collected for 3 years with the majority of data comes from 2016 and 2017. 
 
-In this dataset, there are no categorical variables. 
+Things I have noticed from the graphs:
+
+* Right skewness in `lead_time`, `stays_in_week_nights` --> log transform if using linear regression.
+
+* Many 0's in `children`, `days_in_waiting_list`, `adr`,`adults`,`is_repeated_guest` and `required_car_parking_spaces` --> create indicator variables of having that feature vs. not, ie. a variable called `children` where a `0` indicates no basement (`children` = 0) and a `1` indicates a basement (`children` > 0).  
+
+For the categorical variables:In this dataset, there are no categorical variables. 
 
 Additionally, we might want to see the number of cancelled booking versus the number of booking not being cancelled. 
 
@@ -109,6 +117,7 @@ Additionally, we might want to see the number of cancelled booking versus the nu
 hotels %>% 
   count(is_canceled)
 ```
+From here, we can see that the number of bookings that got canceled is close to the number of bookings that did not get canceled. The number of data is sufficient enough for us to do any machine learning models. 
 
 3. First, we will do a couple things to get the data ready. 
 
@@ -152,50 +161,6 @@ hotels_testing <- testing(hotels_split)
 * Create dummy variables for all factors/categorical predictor variables (make sure you have `-all_outcomes()` in this part!!).  
 * Use the `prep()` and `juice()` functions to apply the steps to the training data just to check that everything went as planned.
 
-
-### Don't know how to do: make new indicator variables that are 1 if they have a value of `NULL` and 0 otherwise. 
-
-```{r recipe}
-hotels_recipeTest <- recipe(is_canceled ~ ., #short-cut, . = all other vars
-                       data = hotels_training) %>%
-  step_mutate(children = ifelse(children > 1, 1, 0), 
-              babies = ifelse(babies > 1, 1, 0),
-              previous_cancellations = ifelse(previous_cancellations > 1, 1,0), 
-              agent = ifelse(is.null(agent), 1,0), 
-              company = ifelse(is.null(company), 1,0), 
-              country = fct_lump_n(country, n = 5))
-
-```
-
-```{r}
-hotels_recipeTest %>% 
-  prep(hotels_training) %>%
-  # using bake(new_data = NULL) gives same result as juice()
-  # bake(new_data = NULL)
-  juice() 
-```
-### . means for all variables 
-
-```{r}
-hotel_recipe_TEST2 <- recipe(is_canceled ~ .,
-                       data = hotels_training) %>% 
-  step_mutate_at(children, babies, previous_cancellations,
-                 fn = ~ as.numeric(. > 0)) %>%
-  step_mutate_at(agent, company,
-                 fn = ~ as.numeric(. == "NULL")) %>%
-  step_mutate(country, 
-              country_grp = fct_lump_n(country, n = 5)) %>% 
-  step_rm(country) 
-```
-
-```{r}
-hotel_recipe_TEST2 %>% 
-  prep(hotels_training) %>%
-  # using bake(new_data = NULL) gives same result as juice()
-  # bake(new_data = NULL)
-  juice() 
-```
-
 ```{r}
 hotel_recipe <- recipe(is_canceled ~ .,
                        data = hotels_training) %>% 
@@ -225,21 +190,18 @@ hotel_recipe %>%
 5. In this step we will set up a LASSO model and workflow.
 
 * In general, why would we want to use LASSO instead of regular logistic regression? (HINT: think about what happens to the coefficients).  
-## Google
-- Logistic regression does not shrink the variables. 
 
-- With LASSO, we only use the most important variables. 
+- Lasso regularizations are also known as ‘shrinkage’ methods, because they reduce or shrink the coefficients in the resulting regression. This reduces the variance in the model: as input variables are changed, the model’s prediction changes less than it would have without the regularization. While using LASSO model, we can avoid overfit by reducing the variance of a model.
+
+- Meanwhile, logistic regression does not shrink the variables, so we will have a lot of variables than needed. 
 
 * Define the model type, set the engine, set the `penalty` argument to `tune()` as a placeholder, and set the mode.  
 * Create a workflow with the recipe and model.  
 
-### What is the penalty: 
-- Typically, we are looking at the square residual. 
-- LASSO: square residual + penalty term ()
+<!-- ### What is the penalty:  -->
+<!-- - Typically, we are looking at the square residual.  -->
+<!-- - LASSO: square residual + penalty term () -->
 
-- Computer has to define it. 
-
-### In here, should we use linear regression or logistic regression? 
 
 ```{r}
 hotel_lasso_mod <- 
@@ -279,7 +241,6 @@ set.seed(494) # for reproducibility
 
 #Split the data into 5-fold: 
 hotel_cv <- vfold_cv(hotels_training, v = 5)
-
 
 # potential penalty parameters
 penalty_grid <- grid_regular(penalty(),
@@ -346,7 +307,7 @@ hotel_lasso_final_mod %>%
   vip()
 ```
 
-In here, the reserved_room_type_P comes up as the most important features. 
+In here, the reserved_room_type_P comes up as the most important features, followed by assigned_room_type_I and deposit_type_Non.Refund. For me personally, I am pretty surprised about the variable importance. Since I thought that deposit type should be the most important variables, however, I am fairly surprise that it is only a top 3 categories. Moreover, I thought previous_cancellations might be an important variable, however, I did not see that in the model. 
 
 * Use the `last_fit()` function to fit the final model and then apply it to the testing data. Report the metrics from the testing data using the `collect_metrics()` function. How do they compare to the cross-validated metrics?
 
@@ -364,6 +325,8 @@ collect_metrics(hotel_lasso_tune) %>%
   filter(.metric == 'accuracy')
 ```
 
+In here, when we look at the accuracy rate, the testing data's accuracy is fairly consistent with the training data. For the testing data, it is estimated that the accuracy is 0.8138140, slightly lower than the training data (0.8161091). However, the number is fairly consistent. 
+
 * Use the `collect_predictions()` function to find the predicted probabilities and classes for the test data. Save this to a new dataset called `preds`. Then, use the `conf_mat()` function from `dials` (part of `tidymodels`) to create a confusion matrix showing the predicted classes vs. the true classes. Compute the true positive rate (sensitivity), true negative rate (specificity), and accuracy. See this [Wikipedia](https://en.wikipedia.org/wiki/Confusion_matrix) reference if you (like me) tend to forget these definitions. Also keep in mind that a "positive" in this case is a cancellation (those are the 1's).    
 
 ```{r}
@@ -375,7 +338,13 @@ preds %>%
   conf_mat(truth = is_canceled, estimate = .pred_class)
 ```
 
-## Make sure to calculate the true positive rate!
+From this confusion matrix: 
+
+- The true positive rate will be: $$\frac{34221}{34221+ 7734} = \frac{34221}{41955} = 0.816$$
+
+- The true negative rate will be: $$\frac{14358}{14358 + 3380} = \frac{14358}{17738} = 0.809$$
+
+- The accuracy will be: $$\frac{34221 + 14358}{34221 + 7734 + 3380 + 14358} = 0.8138 $$
 
 * Use the `preds` dataset you just created to create a density plot of the predicted probabilities of canceling (the variable is called `.pred_1`), filling by `is_canceled`. Use an `alpha = .5` and `color = NA` in the `geom_density()`. 
 
@@ -387,26 +356,30 @@ preds %>%
 Answer these questions: 
 a. What would this graph look like for a model with an accuracy that was close to 1?  
 
-I believe that a model with an accuracy that was close to 1 will have a density plot mostly on the value of 1 or 0 only.
+I believe that a model with an accuracy that was close to 1 will have a density plot mostly on the value of 1 or 0 only. 
 
 b. Our predictions are classified as canceled if their predicted probability of canceling is greater than .5. If we wanted to have a high true positive rate, should we make the cutoff for predicted as canceled higher or lower than .5?  
-
-## Is true positive in here means: the room we predict to get canceled DID get canceled?
-### And true negative: the room we predict not get canceled DID NOT get canceled. 
 
 As the true positive rate can be calculated as True Positive / (True Positive + False Negative). 
 Therefore, to make the true positive rate higher, we should make the cutoff higher, which then makes the prediction more accurate. 
 
 c. What happens to the true negative rate if we try to get a higher true positive rate? 
+
 If we try to get a higher true positive rate, we need to increase the cut off rate. As we have less postive cases, we will have more negative cases. With that, we will be more likely to get a false negative cases and the true negative rate will decrease. 
 
 8. Let's say that this model is going to be applied to bookings 14 days in advance of their arrival at each hotel, and someone who works for the hotel will make a phone call to the person who made the booking. During this phone call, they will try to assure that the person will be keeping their reservation or that they will be canceling in which case they can do that now and still have time to fill the room. How should the hotel go about deciding who to call? How could they measure whether it was worth the effort to do the calling? Can you think of another way they might use the model? 
 
-For the model, according to the importance variables graph, ....
+For the model, according to the importance variables graph, the hotel should call the person who books the room type P or has been assigned to room I. Additionally, they should call the person who books the room is not refundable. 
+
+They could measure who to call based on the rate of that room was being cancelled as well as how likely that will happen. For example, they can look into the variable importance to decide which variables will be important. Once they combine their previous undertanding about the demographic as well as the result from the model, they can find out who should they call. 
+
+Another way they can use the model is that they can focus more on some key parts (for example: on the reserved_room P, G or F rather than A,B or C). With these models and its attributions to the cancellation number, they can implement the variables that have positive attributes such as lead_time or stay_in_week_nights for instance to create new rules. For example, they can lower the rate to stay in the hotel during week nights so that they can attract more visitors during that time. 
 
 9. How might you go about questioning and evaluating the model in terms of fairness? Are there any questions you would like to ask of the people who collected the data? 
 
-I don't know which questions to ask. 
+In here, since the person who creates the data works in the hotel, one might ask whether he/she collects the data accurately or not. If he/she lowers the cancellation rate during his/her work, it might make the data inaccurate and the model might not be accurate. 
+
+Therefore, we should try to see whether to data collecting process might be accurate or not. 
 
 
 
@@ -422,4 +395,9 @@ Read [Chapter 1: The Power Chapter](https://data-feminism.mitpress.mit.edu/pub/v
 
 * How did the examples in the "Data Science with Whose Interests and Goals?" section make you feel? What responsibility do companies have to prevent these things from occurring? Who is to blame?
 
+After reading this chapter, I feel that it is extremely important to ask the question "who is doing the work of data science". As if the data science jobs consist of looking at the data and trying to find the insights based on that, it will be really important that the data collection part as well as the data analysing process is being done carefully and without any bias. Personally, I have seen some examples of missing datasets, especially when someone tries to manipulate the data for their own purpose. 
+
+In my country, sometimes, to prove some certain ideas (such as the literacy rate), they will try to hide or eliminate parts of the data. However, we should ask the question that who is to blame? Is this the person who is inserting the data or is it due to the direction of the upper level class? We will not know the answer to be exact. 
+
+All and all, I feel that the best thing that we should do as an individual is try to acknowledge there are still biases in the world today and try the best to prevent it. Moreover, companies need to take steps to make things better and create an environment that will be less biased in the future. 
 

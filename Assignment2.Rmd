@@ -13,14 +13,6 @@ output:
 knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 ```
 
-```{r libraries}
-library(tidyverse)         # for graphing and data cleaning
-library(tidymodels)        # for modeling
-library(naniar)            # for analyzing missing values
-library(vip)               # for variable importance plots
-theme_set(theme_minimal()) # Lisa's favorite theme
-```
-
 ```{r data}
 hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv')
 ```
@@ -43,7 +35,9 @@ Read through and follow along with the [Machine Learning review with an intro to
 **Tasks**:
 
 1. Read about the hotel booking data, `hotels`, on the [Tidy Tuesday page](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-02-11/readme.md) it came from. There is also a link to an article from the original authors. The outcome we will be predicting is called `is_canceled`. 
-  - Without doing any analysis, what are some variables you think might be predictive and why?  
+
+  - Without doing any analysis, what are some variables you think might be predictive and why?
+  
 Without doing any analysis, I think previous_cancellations, previous_bookings_not_canceled and deposit_type might be the three variables that might be predictive. The reason for that is becasue previous_cancellations show the number of previous bookings that were cancelled by the customer prior to the current booking. The same thing can be applied for previous_bookings_not_canceled. 
 
 Additionally, for deposit_type, if the room has been charged (Non Refund), it will be more likely that the room will not get cancelled a lot of time. 
@@ -51,6 +45,7 @@ Additionally, for deposit_type, if the room has been charged (Non Refund), it wi
   _ What are some problems that might exist with the data? You might think about how it was collected and who did the collecting.  
   
 Some problems might exist with the data are: 
+
 - As the data was obtained directly from the hotels’ PMS databases’ servers, the hotel's workers were the one who complete the data. Therefore, it might be biased based on the view of the hotel's workers. 
 
   - If we construct a model, what type of conclusions will be able to draw from it?  
@@ -58,8 +53,6 @@ Some problems might exist with the data are:
 If we create a model, we can find which variables have the highest impact on the decision of cancelling a booking or not. 
 
 2. Create some exploratory plots or table summaries of the variables in the dataset. Be sure to also examine missing values or other interesting values. You may want to adjust the `fig.width` and `fig.height` in the code chunk options.  
-
-### Need to comment on this one: 
 
 ```{r libraries}
 library(tidyverse)         # for reading in data, graphing, and cleaning
@@ -354,9 +347,10 @@ preds %>%
 ```
 
 Answer these questions: 
+
 a. What would this graph look like for a model with an accuracy that was close to 1?  
 
-I believe that a model with an accuracy that was close to 1 will have a density plot mostly on the value of 1 or 0 only. 
+I believe that a model with an accuracy that was close to 1 will have two distinct parts and will not have many overlap points.Moreover, the two parts will be really left-skewed and right-skewed. The reason for that will be: if the dataset said that this person canceled his booking (is_canceled = 1) and the dataset correctly predict that, the prediction will be close to 1. With that, there will have less dataset with .pred_1 < 0.5 while is_canceled = 1 and vice versa for is_canceled = 0. With that, the graph will be split into two parts: one right-skewed red part and one left-skewed blue part. 
 
 b. Our predictions are classified as canceled if their predicted probability of canceling is greater than .5. If we wanted to have a high true positive rate, should we make the cutoff for predicted as canceled higher or lower than .5?  
 

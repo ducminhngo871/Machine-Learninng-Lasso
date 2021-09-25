@@ -191,11 +191,6 @@ hotel_recipe %>%
 * Define the model type, set the engine, set the `penalty` argument to `tune()` as a placeholder, and set the mode.  
 * Create a workflow with the recipe and model.  
 
-<!-- ### What is the penalty:  -->
-<!-- - Typically, we are looking at the square residual.  -->
-<!-- - LASSO: square residual + penalty term () -->
-
-
 ```{r}
 hotel_lasso_mod <- 
   # Define a lasso model 
@@ -383,15 +378,13 @@ Read [Chapter 1: The Power Chapter](https://data-feminism.mitpress.mit.edu/pub/v
 
 * At the end of the "Matrix of Domination" section, they encourage us to "ask uncomfortable questions: who is doing the work of data science (and who is not)? Whose goals are prioritized in data science (and whose are not)? And who benefits from data science (and who is either overlooked or actively harmed)?" In general, how would you answer these questions? And why are they important?  
 
-
 * Can you think of any examples of missing datasets, like those described in the "Data Science for Whom?" section? Or was there an example there that surprised you?  
-
 
 * How did the examples in the "Data Science with Whose Interests and Goals?" section make you feel? What responsibility do companies have to prevent these things from occurring? Who is to blame?
 
 After reading this chapter, I feel that it is extremely important to ask the question "who is doing the work of data science". As if the data science jobs consist of looking at the data and trying to find the insights based on that, it will be really important that the data collection part as well as the data analysing process is being done carefully and without any bias. Personally, I have seen some examples of missing datasets, especially when someone tries to manipulate the data for their own purpose. 
 
-In my country, sometimes, to prove some certain ideas (such as the literacy rate), they will try to hide or eliminate parts of the data. However, we should ask the question that who is to blame? Is this the person who is inserting the data or is it due to the direction of the upper level class? We will not know the answer to be exact. 
+In my country, sometimes, to prove some certain ideas (such as the literacy rate), they will try to hide or eliminate parts of the data. However, we should ask the question that who is to blame? Is this the person who is inserting the data or is it due to the direction of the upper level class? We will not know the answer to be exact.Therefore, telling that only one person is the one to blame might be inappropriate to do. It normally comes from the belief of the whole system, therefore, we need to slowly change it for the bettter.  
 
 All and all, I feel that the best thing that we should do as an individual is try to acknowledge there are still biases in the world today and try the best to prevent it. Moreover, companies need to take steps to make things better and create an environment that will be less biased in the future. 
 
